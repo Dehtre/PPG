@@ -39,7 +39,6 @@ void SetupRC() {
 		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ \n");
 	}
 
-
 	viewFrustum.SetPerspective(15.0f,(float)800.0/(float)600.0,0,10000);
 	camera.LoadMatrix(viewFrustum.GetProjectionMatrix());
 }
@@ -114,7 +113,6 @@ void RenderScene() {
     glVertex3f(-1.0f, -1.0f, 0.0f);
     glVertex3f(1.0f, -1.0f, 0.0f);
     glVertex3f(1.0f, 1.0f, 0.0f);
-
 
 	glEnd();
 
