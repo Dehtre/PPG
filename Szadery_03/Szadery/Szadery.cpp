@@ -62,9 +62,6 @@ void pushSiatka() {
 }
 
 void RenderPiramidka(float xPos, float yPos, float zPos) {
-	//krêci wszystkim doko³a
-	//matrixStack.Rotate(cameraBothZ, 0, 0, 1);
-
 	matrixStack.Translate(xPos, yPos, zPos);
 
 	//dla ³adnego startu
@@ -139,6 +136,10 @@ void animate() {
 	matrixStack.LoadIdentity();
 	matrixStack.PushMatrix();
 	matrixStack.Scale(0.1,0.1,0.1);
+	//Perspektywa + krêcenie kamery
+	matrixStack.Rotate(40, 1, 0, 0);
+	matrixStack.Rotate(cameraBothZ, 0, 0, 1);
+	//Nie dzia³a!
 	//matrixStack.MultMatrix(viewFrustum.GetProjectionMatrix());
 		
 	// dodac kiedys kamere
