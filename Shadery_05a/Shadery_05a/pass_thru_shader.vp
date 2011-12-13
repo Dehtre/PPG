@@ -19,6 +19,7 @@ struct pointLight {
 };
 
 uniform pointLight light1;
+uniform pointLight light2;
 
 struct materialProperties {
     vec3  ambientColor;
@@ -42,12 +43,17 @@ void main() {
 	vec3 lightDirection=normalize(toLight);
 	float diffuse=max(0.0,dot(normalInEyeSpace,lightDirection));
     vVaryingColor = vec4(material.ambientColor, 1);
-    // vVaryingColor = vec4(vNormal, 0.0);
     
-    // vVaryingColor += vec4(intensity*diffuse*material.diffuseColor*light1.color, 1);
 	vVaryingColor += vec4(intensity*diffuse*material.diffuseColor*light1.color, 1);
+
+	vec3 toLight2=light2.position-positionInEyeSpace3;
+	float r2=length(toLight2);
+	float intensity2=1000.0/(light2.attenuation0+light2.attenuation1*r2+light2.attenuation2*r2*r2);
+	vec3 lightDirection2=normalize(toLight2);
+	float diffuse2=max(0.0,dot(normalInEyeSpace,lightDirection2));
+	vVaryingColor += vec4(intensity2*diffuse2*material.diffuseColor*light2.color, 1);
+
 	vVaryingColor += vec4(0.2*ambientLight*material.diffuseColor, 1);
 	
     gl_Position = positionInEyeSpace4;
-    // vVaryingColor = vec4(normalInEyeSpace, 1);
 }

@@ -1,7 +1,13 @@
+// Shadery_05a.cpp : Defines the entry point for the console application.
+//
+
 // Szadery.cpp : main project file.
 
 #include "stdafx.h"
 #include <iostream>
+
+#include <stdio.h>
+#include <vector>
 
 #include <GLTools.h> 
 #define FREEGLUT_STATIC
@@ -54,11 +60,70 @@ struct MaterialUniform {
 };
 
 LightUniform light;
+LightUniform small_light;
 MaterialUniform material;
 
 void ChangeSize(int w, int h) {
 	glViewport(0,0,w,h);
 }
+
+GLuint vertex_buffer, faces_buffer;
+
+vector<float> ico_vertices;
+vector<GLuint> ico_faces;
+int n_faces, n_vertices;
+
+void readVertices() {
+   FILE *fvertices=fopen("geode_vertices.dat","r");
+   if(fvertices==NULL) {
+   fprintf(stderr,"cannot open vertices file for reading\n");
+   exit(-1);
+   }
+   char line[120];
+   n_vertices = 0;
+   while(fgets(line,120,fvertices)!=NULL) {
+	   float x,y,z;
+	   double norm;
+	   sscanf(line,"%f %f %f",&x,&y,&z);
+	  
+	   norm=x*x+y*y+z*z;
+	   norm=sqrt(norm);
+	   n_vertices++;
+	   ico_vertices.push_back(x);
+	   ico_vertices.push_back(y);
+	   ico_vertices.push_back(z);
+	   ico_vertices.push_back(1.0f);
+	   ico_vertices.push_back(x/norm);
+	   ico_vertices.push_back(y/norm);
+	   ico_vertices.push_back(z/norm);
+   }
+}
+
+
+void readFaces() {
+	FILE *ffaces=fopen("geode_faces.dat","r");
+   if(ffaces==NULL) {
+   fprintf(stderr,"cannot open faces file for reading\n");
+   exit(-1);
+   }
+	n_faces = 0;
+	char line[120];
+   while(fgets(line,120,ffaces)!=NULL) {
+	   GLuint  i,j,k;
+	   
+	   if(3!=sscanf(line,"%u %u %u",&i,&j,&k)){
+		   fprintf(stderr,"error reading faces\n"); 
+		   exit(-1);
+	   }
+	   //fprintf(stderr,"%u %u %u\n",i-1,j-1,k-1);
+	   n_faces++;
+	   ico_faces.push_back(i-1);
+	   ico_faces.push_back(j-1);
+	   ico_faces.push_back(k-1);
+   
+   }
+}
+
 
 void SetupRC() {
 	glEnable(GL_DEPTH_TEST);
@@ -93,12 +158,37 @@ void SetupRC() {
 	light.attenuation1Location = glGetUniformLocation(shader, "light1.attenuation1");
 	light.attenuation2Location = glGetUniformLocation(shader, "light1.attenuation2");
 
+	small_light.positionLocation = glGetUniformLocation(shader, "light2.position");
+	small_light.colorLocation = glGetUniformLocation(shader, "light2.color");
+	small_light.angleLocation = glGetUniformLocation(shader, "light2.angle");
+	small_light.attenuation0Location = glGetUniformLocation(shader, "light2.attenuation0");
+	small_light.attenuation1Location = glGetUniformLocation(shader, "light2.attenuation1");
+	small_light.attenuation2Location = glGetUniformLocation(shader, "light2.attenuation2");
+
 	material.ambientColorLocation = glGetUniformLocation(shader, "material.ambientColor");
 	material.diffuseColorLocation = glGetUniformLocation(shader, "material.diffuseColor");
 	material.specularColorLocation = glGetUniformLocation(shader, "material.specularColor");
 	material.specularExponentLocation = glGetUniformLocation(shader, "material.specularExponent");
 
 	viewFrustum.SetPerspective(15.0f,(float)800.0/(float)600.0,0,1000);
+
+	glGenBuffers(1,&vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+
+	readVertices();
+	glBufferData(GL_ARRAY_BUFFER,n_vertices*sizeof(float)*7,&ico_vertices[0],GL_STATIC_DRAW);
+	glVertexAttribPointer(GLT_ATTRIBUTE_VERTEX,4,GL_FLOAT,GL_FALSE,sizeof(float)*7,(const GLvoid *)0);
+	glVertexAttribPointer(GLT_ATTRIBUTE_NORMAL,3,GL_FLOAT,GL_FALSE,sizeof(float)*7,(const GLvoid *)(4*sizeof(float)) );
+
+	glEnableVertexAttribArray(GLT_ATTRIBUTE_VERTEX);
+	glEnableVertexAttribArray(GLT_ATTRIBUTE_NORMAL);
+
+	glGenBuffers(1,&faces_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,faces_buffer);
+
+	readFaces();
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,n_faces*sizeof(GLuint)*3,&ico_faces[0],GL_STATIC_DRAW);
+	
 }
 
 float randf(float scale = 0.05f) {
@@ -134,67 +224,9 @@ void pushSiatka() {
 	}
 	glEnd();
 }
+void RenderDwudziestoscian(float xPos, float yPos, float zPos, float scale) {
+	matrixStack.PushMatrix();
 
-float ico_vertices[3 * 12] = {
-      0., 0., -0.9510565162951536,
-      0., 0., 0.9510565162951536,
-      -0.85065080835204, 0., -0.42532540417601994,
-      0.85065080835204, 0., 0.42532540417601994,
-      0.6881909602355868, -0.5, -0.42532540417601994,
-      0.6881909602355868, 0.5, -0.42532540417601994,
-      -0.6881909602355868, -0.5, 0.42532540417601994,
-      -0.6881909602355868, 0.5, 0.42532540417601994,
-      -0.2628655560595668, -0.8090169943749475, -0.42532540417601994,
-      -0.2628655560595668, 0.8090169943749475, -0.42532540417601994,
-      0.2628655560595668, -0.8090169943749475, 0.42532540417601994,
-      0.2628655560595668, 0.8090169943749475, 0.42532540417601994
-      };
-int ico_faces[3*20]={
-      1 ,			 11 ,			 7 ,
-      1 ,			 7 ,			 6 ,
-      1 ,			 6 ,			 10 ,
-      1 ,			 10 ,			 3 ,
-      1 ,			 3 ,			 11 ,
-      4 ,			 8 ,			 0 ,
-      5 ,			 4 ,			 0 ,
-      9 ,			 5 ,			 0 ,
-      2 ,			 9 ,			 0 ,
-      8 ,			 2 ,			 0 ,
-      11 ,			 9 ,			 7 ,
-      7 ,			 2 ,			 6 ,
-      6 ,			 8 ,			 10 ,
-      10 ,			 4 ,			 3 ,
-      3 ,			 5 ,			 11 ,
-      4 ,			 10 ,			 8 ,
-      5 ,			 3 ,			 4 ,
-      9 ,			 11 ,			 5 ,
-      2 ,			 7 ,			 9 ,
-      8 ,			 6 ,			 2 };
-
-void drawTriangles(int n_faces, float *vertices, int *faces) {
-      for (int i = 0; i < n_faces; i++) {
-      glBegin(GL_TRIANGLES);
-      TriangleFace(vertices + 3 * faces[3 * i], vertices + 3 * faces[3 * i + 1], vertices + 3 * faces[3 * i + 2]);
-      glEnd();
-      }
-      }
- 
-void drawSmoothTriangles(int n_faces, float *vertices, int *faces) {
-      M3DVector3f normal;
-      for (int i = 0; i < n_faces; i++) {
-      glBegin(GL_TRIANGLES);
-      for(int j=0;j<3;++j) {
-      m3dCopyVector3(normal,vertices+3*faces[i*3+j]);
-      m3dNormalizeVector3(normal);
-      glVertexAttrib3fv(GLT_ATTRIBUTE_NORMAL, normal);
-      glVertex3fv(vertices+3*faces[i*3+j]);
-      
-      }
-      glEnd();
-      }
-      }
-
-void RenderDwudziestoscian(float xPos, float yPos, float zPos) {
 	matrixStack.Translate(xPos, yPos, zPos);
 
 	//dla ³adnego startu
@@ -212,18 +244,20 @@ void RenderDwudziestoscian(float xPos, float yPos, float zPos) {
 
 	matrixStack.Rotate(cameraAngleZ, 0, 0, 1);
 
+	matrixStack.Scale(scale, scale, scale);
 
 	glUniformMatrix4fv(MVMatrixLocation,1,GL_FALSE,matrixStack.GetMatrix());
 
-    glVertexAttrib3f(GLT_ATTRIBUTE_COLOR, 1.0, 0.0, 0.0);
-
-	drawTriangles(20, ico_vertices, ico_faces);
+	glDrawElements(GL_TRIANGLES,3*n_faces,GL_UNSIGNED_INT,0);
 
 	matrixStack.PopMatrix();
 }
 
+int frameNo = 0;
 
 void animate() {
+	frameNo++;
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -237,6 +271,9 @@ void animate() {
 
 	float ambientLight[] = {1,1,1};
 	glUniform3fv(ambientLightLocation, 1, ambientLight);
+
+	float small_color[] = {1,1,1}, small_position[] = {-5 + 2*cos(frameNo/180.0*PI/2.0),-5 + 2*sin(frameNo/180.0*PI/2.0),-2};
+	small_light.setLight(small_position, small_color, 180, 1, 1, 2);
 
 	cameraAngleX += randf() * 5.0;
 	cameraAngleY += randf() * 2.7;
@@ -257,18 +294,19 @@ void animate() {
 	float ambient2[] = {0.2,0.2,0.2};
 	material.setMaterial(ambient2, diffuse, specular, 1);
 
-	//piramidka 1
-	RenderDwudziestoscian(5,5,-2);
+	RenderDwudziestoscian(5,5,-2,0.8);
 
-	//piramidka 2
-	RenderDwudziestoscian(-5,-5,-2);
+	RenderDwudziestoscian(-5,-5,-2,0.5);
+	
+	RenderDwudziestoscian(small_position[0], small_position[1], small_position[2], 0.2);
+
 
 	matrixStack.PopMatrix();
 
 	glutSwapBuffers();
 }
 
-int main(int argc, char* argv[])
+int _tmain(int argc, char* argv[])
 {
     cout << "Hello le World" << endl;
 
