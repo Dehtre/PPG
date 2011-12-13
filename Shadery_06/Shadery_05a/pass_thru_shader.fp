@@ -54,6 +54,14 @@ void main() {
 		float fSpecular=pow(specular,material.specularExponent);
 		vFragColor += vec4(intensity*fSpecular*light1.color*material.specularColor, 0);	
 	}
+
+	if(diffuse2>0.0) {
+		vec3 halfvector2=normalize(lightDirection2-normalize(positionInEyeSpace3));
+		float specular2=max(0.0,dot(halfvector2,normalInEyeSpace));
+		float fSpecular2=pow(specular2,material.specularExponent);
+		vFragColor += vec4(intensity2*fSpecular2*light1.color*material.specularColor, 0);	
+	}	
+	
 	
 	// vFragColor = vec4(1.0, 0, 0, 1.0);
 }
