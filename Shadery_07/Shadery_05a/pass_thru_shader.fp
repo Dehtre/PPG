@@ -27,13 +27,16 @@ out vec4 vFragColor;
 
 smooth in vec3  positionInEyeSpace3;
 smooth in vec3  normalInEyeSpace;
+smooth in vec2  varyingTexCoord;
+uniform sampler2D texture0;
 
 void main() {
+/*
 	vFragColor = vec4(material.ambientColor, 1.0);
 	
 	vec3 toLight=light1.position-positionInEyeSpace3;
 	float r=length(toLight);
-	float intensity=100.0/(light1.attenuation0+light1.attenuation1*r+light1.attenuation2*r*r);
+	float intensity=1.0/(light1.attenuation0+light1.attenuation1*r+light1.attenuation2*r*r);
 	vec3 lightDirection=normalize(toLight);
 	float diffuse=max(0.0,dot(normalInEyeSpace,lightDirection));
 	
@@ -41,7 +44,7 @@ void main() {
 
 	vec3 toLight2=light2.position-positionInEyeSpace3;
 	float r2=length(toLight2);
-	float intensity2=10.0/(light2.attenuation0+light2.attenuation1*r2+light2.attenuation2*r2*r2);
+	float intensity2=1.0/(light2.attenuation0+light2.attenuation1*r2+light2.attenuation2*r2*r2);
 	vec3 lightDirection2=normalize(toLight2);
 	float diffuse2=max(0.0,dot(normalInEyeSpace,lightDirection2));
 	
@@ -60,6 +63,9 @@ void main() {
 		float fSpecular2=pow(specular2,material.specularExponent);
 		vFragColor += vec4(intensity2*fSpecular2*light2.color*material.specularColor, 0);	
 	}	
+	vFragColor = vec4(vec3(texture(texture0, varyingTexCoord)),1);
+	*/
 	
-	// vFragColor = vec4(lightDirection, 1);
+	vFragColor = texture2D(texture0, varyingTexCoord);
+	// vFragColor = vec4(lightDirection2, 1);
 }

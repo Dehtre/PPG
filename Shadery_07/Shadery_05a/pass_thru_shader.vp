@@ -2,16 +2,21 @@
 
 in vec4 vVertex;
 in vec3 vNormal;
+in vec2 texCoord0;
 
 uniform mat4x4 PMatrix;
 uniform mat4x4 MVMatrix;
 
+smooth out vec2  varyingTexCoord;
 smooth out vec3  positionInEyeSpace3;
 smooth out vec3  normalInEyeSpace;
 
 void main() {
 	vec4 positionInEyeSpace4 = MVMatrix*vVertex;
+	
 	positionInEyeSpace3 = positionInEyeSpace4.xyz/positionInEyeSpace4.w;
+	varyingTexCoord=texCoord0;
 	normalInEyeSpace = (MVMatrix * vec4(vNormal, 0)).xyz;
 	gl_Position = PMatrix*positionInEyeSpace4;
+
 }

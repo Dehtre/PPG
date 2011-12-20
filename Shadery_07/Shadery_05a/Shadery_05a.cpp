@@ -22,7 +22,7 @@
 using namespace std;
 
 GLuint shader;
-GLint MVMatrixLocation, PMatrixLocation, NormalMatrixLocation, ambientLightLocation; 
+GLint MVMatrixLocation, PMatrixLocation, NormalMatrixLocation, ambientLightLocation, textureLocation; 
 GLFrustum viewFrustum;
 GLMatrixStack matrixStack;
 float cameraAngleX = 0,cameraAngleY = 0,cameraAngleZ = 0,cameraBothZ = 0;
@@ -67,14 +67,14 @@ void ChangeSize(int w, int h) {
 	glViewport(0,0,w,h);
 }
 
-GLuint vertex_buffer, faces_buffer;
+GLuint vertex_buffer, faces_buffer, texture_buffer;
 
 vector<float> ico_vertices;
 vector<GLuint> ico_faces;
 int n_faces, n_vertices;
 
 void readVertices() {
-   FILE *fvertices=fopen("geode_vertices.dat","r");
+   FILE *fvertices=fopen("cube_vertices.dat","r");
    if(fvertices==NULL) {
    fprintf(stderr,"cannot open vertices file for reading\n");
    exit(-1);
@@ -101,7 +101,7 @@ void readVertices() {
 
 
 void readFaces() {
-	FILE *ffaces=fopen("geode_faces.dat","r");
+	FILE *ffaces=fopen("cube_faces.dat","r");
    if(ffaces==NULL) {
    fprintf(stderr,"cannot open faces file for reading\n");
    exit(-1);
@@ -109,28 +109,94 @@ void readFaces() {
 	n_faces = 0;
 	char line[120];
    while(fgets(line,120,ffaces)!=NULL) {
-	   GLuint  i,j,k;
+	   GLuint  i,j,k,l;
 	   
-	   if(3!=sscanf(line,"%u %u %u",&i,&j,&k)){
-		   fprintf(stderr,"error reading faces\n"); 
-		   exit(-1);
-	   }
-	   //fprintf(stderr,"%u %u %u\n",i-1,j-1,k-1);
+	   sscanf(line,"%u %u %u %u",&i,&j,&k,&l);
 	   n_faces++;
 	   ico_faces.push_back(i-1);
 	   ico_faces.push_back(j-1);
 	   ico_faces.push_back(k-1);
-   
+	   ico_faces.push_back(l-1);
    }
 }
 
+GLuint textureID[3];
+
+void SetupTexture(int n, const char *szFileName) {
+	glBindTexture(GL_TEXTURE_2D, textureID[n]);
+
+	GLbyte *pBits;
+	int nWidth, nHeight, nComponents;
+	GLenum eFormat;
+	pBits = gltReadTGABits(szFileName, &nWidth, &nHeight, &nComponents, &eFormat);
+
+	cout << "Read texture: " << szFileName << " (" << nWidth << "," << nHeight << ")" << endl;
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D, 0, nComponents, nWidth, nHeight, 0, eFormat, GL_UNSIGNED_BYTE, pBits);
+
+	free(pBits);
+};
+
+GLuint textureCoords[] = {
+      // Front face
+      0.0, 0.0,
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+
+      // Back face
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+      0.0, 0.0,
+
+      // Top face
+      0.0, 1.0,
+      0.0, 0.0,
+      1.0, 0.0,
+      1.0, 1.0,
+
+      // Bottom face
+      1.0, 1.0,
+      0.0, 1.0,
+      0.0, 0.0,
+      1.0, 0.0,
+
+      // Right face
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+      0.0, 0.0,
+
+      // Left face
+      0.0, 0.0,
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+};
 
 void SetupRC() {
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	shader = gltLoadShaderPairWithAttributes("pass_thru_shader.vp", "pass_thru_shader.fp", 
-		2, GLT_ATTRIBUTE_VERTEX, "vVertex", GLT_ATTRIBUTE_NORMAL, "vNormal");
+				4, 
+				GLT_ATTRIBUTE_VERTEX, "vVertex", 
+				GLT_ATTRIBUTE_COLOR, "vColor",
+	            GLT_ATTRIBUTE_TEXTURE0, "texCoord0",
+				GLT_ATTRIBUTE_NORMAL, "vNormal");
+
+	glGenTextures(3,textureID);
+
+	SetupTexture(0, "1.tga");
+
 	fprintf(stdout, "GLT_ATTRIBUTE_VERTEX : %d\nGLT_ATTRIBUTE_NORMAL : %d \n",
             GLT_ATTRIBUTE_VERTEX, GLT_ATTRIBUTE_NORMAL);
 	
@@ -144,6 +210,13 @@ void SetupRC() {
 		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ PMatrix\n");
 	}
 
+	NormalMatrixLocation = glGetUniformLocation(shader, "normalMatrix");
+	if(NormalMatrixLocation == -1) {
+		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ normalMatrix\n");
+	}
+
+	textureLocation = glGetUniformLocation(shader, "texture0");
+	
 	ambientLightLocation = glGetUniformLocation(shader, "ambientLight");
 
 	light.positionLocation = glGetUniformLocation(shader, "light1.position");
@@ -181,8 +254,11 @@ void SetupRC() {
 	glGenBuffers(1,&faces_buffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,faces_buffer);
 	readFaces();
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,n_faces*sizeof(GLuint)*3,&ico_faces[0],GL_STATIC_DRAW);
-	
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,n_faces*sizeof(GLuint)*4,&ico_faces[0],GL_STATIC_DRAW);
+
+	glGenBuffers(1,&texture_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,texture_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,n_faces*sizeof(GLuint)*4,textureCoords,GL_STATIC_DRAW);
 }
 
 float randf(float scale = 0.05f) {
@@ -203,23 +279,22 @@ void TriangleFace(M3DVector3f a, M3DVector3f b, M3DVector3f c) {
 
 
 void pushSiatka() {
+	matrixStack.PushMatrix();
 	glUniformMatrix4fv(MVMatrixLocation,1,GL_FALSE,matrixStack.GetMatrix());
 
 	glBegin(GL_TRIANGLES);
 	glVertexAttrib4f(GLT_ATTRIBUTE_COLOR, 0.2, 0.2, 0.2, 1.0);
 	for(int i = -10; i<=10; i++) {
-			for(int j = -10; j<=10; j++) {
-				float v1[] = {i,j,0};
-				float v2[] = {i+1,j,0};
-				float v3[] = {i,j+1,0};
-				float v4[] = {i+1,j+1,0};
-				TriangleFace(v1,v2,v3);
-				TriangleFace(v2,v4,v3);
-			}
+		float v1[] = {i,-10,0};
+		float v2[] = {i,10,0};
+		float v3[] = {-10,i,0};
+		float v4[] = {10,i,0};
+		TriangleFace(v1,v2,v3);
+		TriangleFace(v2,v3,v4);
 	}
 	glEnd();
 }
-void RenderDwudziestoscian(float xPos, float yPos, float zPos, float scale) {
+void RenderSzescian(float xPos, float yPos, float zPos, float scale) {
 	matrixStack.PushMatrix();
 
 	matrixStack.Translate(xPos, yPos, zPos);
@@ -245,7 +320,11 @@ void RenderDwudziestoscian(float xPos, float yPos, float zPos, float scale) {
 
 	glUniformMatrix3fv(NormalMatrixLocation,1,GL_FALSE,normalMatrix);
 
-	glDrawElements(GL_TRIANGLES,3*n_faces,GL_UNSIGNED_INT,0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureID[0]);
+	glUniform1i(textureLocation, 0);
+
+	glDrawElements(GL_QUADS,4*n_faces,GL_UNSIGNED_INT,0);
 
 	matrixStack.PopMatrix();
 }
@@ -274,17 +353,19 @@ void animate() {
 		
 	glUniformMatrix4fv(PMatrixLocation,1,GL_FALSE,matrixStack.GetMatrix());
 	
-	float ambient[] = {0.5,0.2,0.2}, diffuse[] = {0.5,0.2,1}, specular[] = {0.2,1,0.2};
+	float ambient[] = {0.5,0.5,0.0}, diffuse[] = {0.5,0.2,1}, specular[] = {0.2,1,0.2};
 	material.setMaterial(ambient, diffuse, specular, 1);
 
-	float color[] = {1,1,1}, position[] = {0,0,-1};
+	float color[] = {1,0.5,0}, position[] = {0,0,-1};
 	light.setLight(position, color, 180, 1, 1, 2);
 
 	float ambientLight[] = {1,1,1};
 	glUniform3fv(ambientLightLocation, 1, ambientLight);
 
 	float small_color[] = {1,1,1}, small_position[] = {5 + 2*cos(frameNo/180.0*PI/2.0), 5 + 2*sin(frameNo/180.0*PI/2.0), -1};
-	small_light.setLight(small_position, small_color, 180, 1, 1, 2);
+	M3DVector4f small_position_transformed;
+	m3dTransformVector4(small_position_transformed, small_position, matrixStack.GetMatrix());
+	small_light.setLight(small_position_transformed, small_color, 180, 1, 1, 2);
 
 	matrixStack.PopMatrix();
 
@@ -293,11 +374,11 @@ void animate() {
 	float ambient2[] = {0.2,0.2,0.2};
 	material.setMaterial(ambient2, diffuse, specular, 1);
 
-	RenderDwudziestoscian(5,5,-2,0.8);
+	RenderSzescian(5,5,-2,0.8);
 
-	RenderDwudziestoscian(-5,-5,-2,0.5);
+	RenderSzescian(-5,-5,-2,0.5);
 	
-	RenderDwudziestoscian(small_position[0], small_position[1], small_position[2], 0.2);
+	RenderSzescian(small_position[0], small_position[1], small_position[2], 0.2);
 
 	glutSwapBuffers();
 }

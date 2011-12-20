@@ -172,6 +172,22 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\1.tga"
+				>
+			</File>
+			<File
+				RelativePath=".\2.tga"
+				>
+			</File>
+			<File
+				RelativePath=".\3.tga"
+				>
+			</File>
+			<File
+				RelativePath=".\4.tga"
+				>
+			</File>
+			<File
 				RelativePath=".\geode_faces.dat"
 				>
 			</File>
