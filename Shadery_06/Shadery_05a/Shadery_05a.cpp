@@ -22,7 +22,7 @@
 using namespace std;
 
 GLuint shader;
-GLint MVMatrixLocation, MVPMatrixLocation, NormalMatrixLocation, ambientLightLocation; 
+GLint MVMatrixLocation, PMatrixLocation, NormalMatrixLocation, ambientLightLocation; 
 GLFrustum viewFrustum;
 GLMatrixStack matrixStack;
 float cameraAngleX = 0,cameraAngleY = 0,cameraAngleZ = 0,cameraBothZ = 0;
@@ -139,10 +139,16 @@ void SetupRC() {
 		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ MVMatrix\n");
 	}
 
-	MVPMatrixLocation = glGetUniformLocation(shader, "MVPMatrix");
-	if(MVPMatrixLocation == -1) {
-		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ MVPMatrix\n");
+	PMatrixLocation = glGetUniformLocation(shader, "PMatrix");
+	if(PMatrixLocation == -1) {
+		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ PMatrix\n");
 	}
+
+	NormalMatrixLocation = glGetUniformLocation(shader, "normalMatrix");
+	if(NormalMatrixLocation == -1) {
+		fprintf(stdout, "Hej ho, hej ho, uniformy nie dzia³aj¹ normalMatrix\n");
+	}
+
 
 	ambientLightLocation = glGetUniformLocation(shader, "ambientLight");
 
@@ -223,25 +229,27 @@ void RenderDwudziestoscian(float xPos, float yPos, float zPos, float scale) {
 	matrixStack.PushMatrix();
 
 	matrixStack.Translate(xPos, yPos, zPos);
-
-	//dla ³adnego startu
-	matrixStack.Rotate(180, 1, 0, 0);
-	
-	if (xPos < 0)
-		matrixStack.Rotate(-cameraAngleX, 1, 0, 0);
-	else
-		matrixStack.Rotate(cameraAngleX, 1, 0, 0);
-
-	if (yPos < 0)
-		matrixStack.Rotate(-cameraAngleY, 0, 1, 0);
-	else
-		matrixStack.Rotate(cameraAngleY, 0, 1, 0);
-
-	matrixStack.Rotate(cameraAngleZ, 0, 0, 1);
-
 	matrixStack.Scale(scale, scale, scale);
 
-	glUniformMatrix4fv(MVMatrixLocation,1,GL_FALSE,matrixStack.GetMatrix());
+	M3DMatrix44f MVMatrix;
+	m3dCopyMatrix44(MVMatrix, matrixStack.GetMatrix());
+	
+	glUniformMatrix4fv(MVMatrixLocation,1,GL_FALSE,MVMatrix);
+
+	M3DMatrix44f normalMatrix;
+	m3dInvertMatrix44(normalMatrix,MVMatrix);
+
+	float tmp;
+	// transponse
+	for(int n = 0; n < 3; n++) {
+		for(int m = n + 1; m <= 3; m++) {
+			tmp = normalMatrix[4*n + m];
+			normalMatrix[4*n + m] = normalMatrix[4*m + n];
+			normalMatrix[4*m + n] = tmp;
+		}
+	}
+
+	glUniformMatrix3fv(NormalMatrixLocation,1,GL_FALSE,normalMatrix);
 
 	glDrawElements(GL_TRIANGLES,3*n_faces,GL_UNSIGNED_INT,0);
 
@@ -258,6 +266,20 @@ void animate() {
 
 	glUseProgram(shader);
 
+	//cameraAngleX += randf() * 5.0;
+	//cameraAngleY += randf() * 2.7;
+	//cameraAngleZ += randf() * 50.0;
+	cameraBothZ += randf() * 10.0;
+	
+	matrixStack.LoadIdentity();
+	matrixStack.PushMatrix();
+	matrixStack.Scale(0.1,0.1,0.1);
+	//Perspektywa + krêcenie kamery
+	matrixStack.Rotate(40, 1, 0, 0);
+	matrixStack.Rotate(cameraBothZ, 0, 0, 1);
+		
+	glUniformMatrix4fv(PMatrixLocation,1,GL_FALSE,matrixStack.GetMatrix());
+	
 	float ambient[] = {0.5,0.5,0.0}, diffuse[] = {0.5,0.2,1}, specular[] = {0.2,1,0.2};
 	material.setMaterial(ambient, diffuse, specular, 1);
 
@@ -267,23 +289,13 @@ void animate() {
 	float ambientLight[] = {1,1,1};
 	glUniform3fv(ambientLightLocation, 1, ambientLight);
 
-	float small_color[] = {1,1,1}, small_position[] = {-5 + 2*cos(frameNo/180.0*PI/2.0),-5 + 2*sin(frameNo/180.0*PI/2.0),-2};
-	small_light.setLight(small_position, small_color, 180, 1, 1, 2);
+	float small_color[] = {1,1,1}, small_position[] = {5 + 2*cos(frameNo/180.0*PI/2.0), 5 + 2*sin(frameNo/180.0*PI/2.0), -1};
+	M3DVector4f small_position_transformed;
+	m3dTransformVector4(small_position_transformed, small_position, matrixStack.GetMatrix());
+	small_light.setLight(small_position_transformed, small_color, 180, 1, 1, 2);
 
-	cameraAngleX += randf() * 5.0;
-	cameraAngleY += randf() * 2.7;
-	cameraAngleZ += randf() * 50.0;
-	cameraBothZ += randf() * 1.0;
-	
-	matrixStack.LoadIdentity();
-	matrixStack.PushMatrix();
-	matrixStack.Scale(0.1,0.1,0.1);
-	//Perspektywa + krêcenie kamery
-	matrixStack.Rotate(40, 1, 0, 0);
-	matrixStack.Rotate(cameraBothZ, 0, 0, 1);
-		
-	// dodac kiedys kamere
-	
+	matrixStack.PopMatrix();
+
 	//siatka
 	pushSiatka();
 	float ambient2[] = {0.2,0.2,0.2};
@@ -294,9 +306,6 @@ void animate() {
 	RenderDwudziestoscian(-5,-5,-2,0.5);
 	
 	RenderDwudziestoscian(small_position[0], small_position[1], small_position[2], 0.2);
-
-
-	matrixStack.PopMatrix();
 
 	glutSwapBuffers();
 }

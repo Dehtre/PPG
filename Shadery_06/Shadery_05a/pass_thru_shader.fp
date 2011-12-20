@@ -28,21 +28,20 @@ out vec4 vFragColor;
 smooth in vec3  positionInEyeSpace3;
 smooth in vec3  normalInEyeSpace;
 
-
 void main() {
 	vFragColor = vec4(material.ambientColor, 1.0);
 	
-	vec3  toLight=light1.position-positionInEyeSpace3;
+	vec3 toLight=light1.position-positionInEyeSpace3;
 	float r=length(toLight);
-	float intensity=100.0/(light1.attenuation0+light1.attenuation1*r+light1.attenuation2*r*r);
+	float intensity=1.0/(light1.attenuation0+light1.attenuation1*r+light1.attenuation2*r*r);
 	vec3 lightDirection=normalize(toLight);
 	float diffuse=max(0.0,dot(normalInEyeSpace,lightDirection));
 	
 	vFragColor += vec4(intensity*diffuse*material.diffuseColor*light1.color, 0);
 
-	vec3  toLight2=light2.position-positionInEyeSpace3;
+	vec3 toLight2=light2.position-positionInEyeSpace3;
 	float r2=length(toLight2);
-	float intensity2=100.0/(light2.attenuation0+light2.attenuation1*r2+light2.attenuation2*r2*r2);
+	float intensity2=1.0/(light2.attenuation0+light2.attenuation1*r2+light2.attenuation2*r2*r2);
 	vec3 lightDirection2=normalize(toLight2);
 	float diffuse2=max(0.0,dot(normalInEyeSpace,lightDirection2));
 	
@@ -59,9 +58,8 @@ void main() {
 		vec3 halfvector2=normalize(lightDirection2-normalize(positionInEyeSpace3));
 		float specular2=max(0.0,dot(halfvector2,normalInEyeSpace));
 		float fSpecular2=pow(specular2,material.specularExponent);
-		vFragColor += vec4(intensity2*fSpecular2*light1.color*material.specularColor, 0);	
+		vFragColor += vec4(intensity2*fSpecular2*light2.color*material.specularColor, 0);	
 	}	
 	
-	
-	// vFragColor = vec4(1.0, 0, 0, 1.0);
+	// vFragColor = vec4(lightDirection2, 1);
 }

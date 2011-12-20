@@ -3,16 +3,16 @@
 in vec4 vVertex;
 in vec3 vNormal;
 
-uniform mat4x4 MVPMatrix;
+uniform mat4x4 PMatrix;
 uniform mat3x3 normalMatrix;
 uniform mat4x4 MVMatrix;
 
 smooth out vec3  positionInEyeSpace3;
 smooth out vec3  normalInEyeSpace;
- 
+
 void main() {
-	vec4 positionInEyeSpace4 = MVMatrix*vVertex;
+	vec4 positionInEyeSpace4 = PMatrix*MVMatrix*vVertex;
 	positionInEyeSpace3 = positionInEyeSpace4.xyz/positionInEyeSpace4.w;
-	normalInEyeSpace = normalize(vec3(MVMatrix*vec4(vNormal,0)));
+	normalInEyeSpace = normalize(normalMatrix*vNormal);
 	gl_Position = positionInEyeSpace4;
 }
